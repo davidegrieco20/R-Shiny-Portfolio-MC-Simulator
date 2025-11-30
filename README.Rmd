@@ -1,0 +1,77 @@
+# 📈 R/Shiny Portfolio & Monte Carlo Simulator
+
+A dynamic and interactive web application built with **R/Shiny** for performing quantitative finance analysis. This tool allows users to define an equity portfolio, compare its performance and risk metrics against the **S&P 500 (^GSPC)** benchmark, and model future performance using **Monte Carlo simulation**.
+
+## ✨ Key Features
+
+* **Custom Portfolio Analysis:** Define a portfolio using up to 5 user-specified stock tickers and custom asset weights.
+* **Real-Time Data Retrieval:** Fetches historical daily return data from Yahoo Finance using the `quantmod` package.
+* **Historical Performance Visualization:** Charts the cumulative returns of your portfolio versus the S&P 500.
+* **Comprehensive Risk & Performance Metrics:** Calculates and compares key metrics:
+    * Daily/Total Returns and Annualized Volatility.
+    * Sharpe Ratio (Daily & Annualized).
+    * CAPM metrics: **Alpha** and **Beta** relative to the S&P 500.
+* **Probabilistic Forecasting (Monte Carlo):** Integrates a **Monte Carlo Simulation** to project future portfolio returns, showing the median expected path and the **95% confidence interval** (using a Geometric Brownian Motion model based on historical parameters).
+
+---
+
+## 🛠️ Technology Stack & Dependencies
+
+* **Language:** R
+* **Framework:** Shiny
+* **Core Libraries:**
+    * `quantmod` (Data retrieval)
+    * `PerformanceAnalytics` (Financial metrics, Sharpe, Alpha, Beta)
+    * `tidyverse` (Data manipulation and `ggplot2` for Monte Carlo plotting)
+    * `xts` (Time series handling)
+
+---
+
+## ▶️ How to Run Locally
+
+### Prerequisites
+
+You must have **R** and **RStudio** installed on your system.
+
+1.  [Install R (The R Project for Statistical Computing)](https://cloud.r-project.org/)
+2.  [Install RStudio Desktop](https://www.rstudio.com/products/rstudio/download/)
+
+### Installation Steps
+
+1.  **Clone the Repository:**
+    ```bash
+    git clone [https://github.com/davidegrieco20/R-Shiny-Portfolio-MC-Simulator.git](https://github.com/davidegrieco20/R-Shiny-Portfolio-MC-Simulator.git)
+    ```
+
+2.  **Open the Project:**
+    Navigate to the cloned directory and open the project in RStudio.
+
+3.  **Install Required Packages:**
+    Open the R Console (in RStudio) and install all necessary dependencies:
+    ```R
+    install.packages(c("shiny", "quantmod", "PerformanceAnalytics", "tidyverse", "xts"))
+    ```
+
+4.  **Run the Application:**
+    Open the `app.R` file and click the **"Run App"** button located at the top-right of the script editor panel.
+
+---
+
+## 🔗 Live Demo
+
+You can interact with a deployed version of the application here:
+
+[**https://davidegrieco.shinyapps.io/FinancialPortfolioVSBenchmarkSimulator/**]
+
+---
+
+## 🖼️ Application Overview
+
+### Historical Performance Tab
+
+This tab displays the cumulative returns chart and the detailed metrics table comparing the portfolio to the benchmark.
+
+
+### Monte Carlo Forecast Tab
+
+This tab shows the probabilistic forecast, visualizing multiple simulated paths along with the median expected return path and the 95% confidence bounds.
