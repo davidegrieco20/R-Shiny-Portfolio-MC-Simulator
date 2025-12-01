@@ -28,6 +28,7 @@ monte_carlo_sim <- function(returns, n_simulations = 100, n_days_forecast = 252)
   sigma <- sd(returns)
   
   # Get the last cumulative return value to start the forecast from
+  # This is the last relative value of the historical portfolio (1 + Historical Cumulative Return)
   initial_value <- as.numeric(last(Return.cumulative(returns, geometric = TRUE))) + 1
   
   # Matrix to store simulation results: rows for days, columns for simulations
@@ -36,13 +37,13 @@ monte_carlo_sim <- function(returns, n_simulations = 100, n_days_forecast = 252)
   for (i in 1:n_simulations) {
     # Generate random daily returns using a normal distribution
     daily_returns <- rnorm(n_days_forecast, mean = mu, sd = sigma)
-    # Calculate the cumulative value path
+    # Calculate the cumulative value path, starting from the historical final value
     path <- initial_value * cumprod(1 + daily_returns)
     simulated_values[, i] <- path
   }
   
-  # Return the matrix of paths
-  return(simulated_values)
+  # Return both the absolute paths and the initial value 
+  return(list(simulated_values = simulated_values, initial_value = initial_value))
 }
 
 
@@ -67,7 +68,7 @@ ui <- fluidPage(
         tabPanel("Monte Carlo Forecast", 
                  plotOutput("mc_plot"),
                  p(strong("Monte Carlo Interpretation:")),
-                 p("The plot shows 95% confidence intervals for the simulated future portfolio value after the forecast period, assuming a Geometric Brownian Motion model based on historical volatility and return. The solid black line is the median (50th percentile) path.")
+                 p("The plot shows 95% confidence intervals for the simulated future portfolio value, normalized to start at 1.0 at the forecast date. The simulation assumes a Geometric Brownian Motion model based on historical volatility and return, and the solid black line represents the median (50th percentile) path.")
         )
       )
     )
@@ -131,26 +132,33 @@ server <- function(input, output, session) {
     benchmark_ret <- benchmark_ret[index(portfolio_returns)]
     
     # 2. Monte Carlo Simulation
-    # Run the MC simulation on the calculated portfolio returns
-    mc_results <- monte_carlo_sim(
+    # Run the MC simulation and get both paths and the initial value
+    mc_results_list <- monte_carlo_sim(
       returns = portfolio_returns,
       n_simulations = input$mc_sims,
       n_days_forecast = input$mc_days
     )
     
-    # 3. Calculate Simulated Terminal Value
-    # The simulated value is the median (50th percentile) of the final values
-    mc_terminal_values <- mc_results[nrow(mc_results), ]
-    mc_final_value <- median(mc_terminal_values)
-    # The MC total return is the final value (relative to 1) minus 1, converted to a percentage
-    mc_total_return <- (mc_final_value - 1) * 100
+    mc_results_absolute <- mc_results_list$simulated_values
+    mc_initial_value <- mc_results_list$initial_value # The relative value at the start of the forecast
     
-    # Store all results
+    # FIX: Normalize the simulation paths for plotting. They will now start at 1.0.
+    mc_results_normalized <- mc_results_absolute / mc_initial_value
+    
+    # 3. Calculate Simulated Terminal Value (Uses absolute values for correct return calculation)
+    mc_terminal_values <- mc_results_absolute[nrow(mc_results_absolute), ]
+    mc_final_value <- median(mc_terminal_values)
+    
+    # Calculate the PURE forecast return (Return over the forecast period only)
+    # Formula: ((Final Absolute Value / Initial Absolute Value) - 1) * 100
+    mc_pure_forecast_return <- ((mc_final_value / mc_initial_value) - 1) * 100
+    
+    # Store all results, using the normalized paths for the plot
     return(list(
       portfolio = portfolio_returns, 
       benchmark = benchmark_ret, 
-      mc_results = mc_results, 
-      mc_total_return = mc_total_return
+      mc_results = mc_results_normalized, # <- Use normalized results for the plot
+      mc_total_return = mc_pure_forecast_return # Store the PURE forecast return
     ))
   })
   
@@ -195,10 +203,12 @@ server <- function(input, output, session) {
       geom_line(aes(y = Median), color = "black", linewidth = 1) +
       labs(
         title = paste("Monte Carlo Forecast: Portfolio Value after", n_days, "Days"),
-        y = "Portfolio Value (Relative to Start)",
+        # Updated Y-axis label to reflect normalization/relative forecast value
+        y = "Portfolio Value (Relative to Forecast Start)", 
         x = "Trading Day Forecast"
       ) +
       theme_minimal() +
+      # Use percent format, 1.0 = 100%
       scale_y_continuous(labels = scales::percent_format(accuracy = 1))
   })
   
@@ -207,7 +217,7 @@ server <- function(input, output, session) {
     req(portfolio_data())
     port <- portfolio_data()$portfolio
     bench <- portfolio_data()$benchmark
-    mc_total_return <- portfolio_data()$mc_total_return
+    mc_pure_forecast_return <- portfolio_data()$mc_total_return # This is the PURE forecast return
     
     n_days <- nrow(port)
     
@@ -227,19 +237,18 @@ server <- function(input, output, session) {
     bench_total <- (prod(1 + bench) - 1) * 100
     bench_total_vol <- bench_sd * sqrt(252) * 100
     bench_sharpe_daily <- SharpeRatio(bench, Rf = 0)[1]
-    # NOTE: The original code used port_sharpe_daily for the benchmark annual sharpe. Corrected to use bench_sharpe_daily.
     bench_sharpe_annual <- as.numeric(bench_sharpe_daily) * sqrt(252)
     
     # Risk Metrics
     alpha <- CAPM.alpha(port, bench, Rf = 0)
     beta <- CAPM.beta(port, bench, Rf = 0)
     
-    # Create the data frame for the table, now including the Monte Carlo results
+    # Create the data frame for the table, now including the corrected Monte Carlo forecast return
     stats <- data.frame(
       `Indicator` = c(
         "Mean Daily Return (%)",
         "Total Return (%)",
-        "Annualized Volatility (%)", # Renamed for clarity since it uses sqrt(252)
+        "Annualized Volatility (%)",
         "Daily Sharpe Ratio",
         "Annualized Sharpe Ratio",
         "Alpha (%)",
@@ -263,9 +272,9 @@ server <- function(input, output, session) {
         "-",  
         "-"
       ),
-      `MonteCarlo MedianForecast` = c(
+      `MonteCarlo MedianForecast (N Days)` = c(
         "-",
-        round(mc_total_return, 2), # MC provides a single forecast for total return
+        round(mc_pure_forecast_return, 2), # Displaying the PURE forecast return
         "-",
         "-",
         "-",
@@ -275,7 +284,7 @@ server <- function(input, output, session) {
     )
     
     return(stats)
-  }, sanitize.text.function = function(x) x) # To allow HTML/special characters in Indicator column
+  }, sanitize.text.function = function(x) x) 
 }
 
 shinyApp(ui, server)

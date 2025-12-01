@@ -11,7 +11,7 @@ A dynamic and interactive web application built with **R/Shiny** for performing 
     * Daily/Total Returns and Annualized Volatility.
     * Sharpe Ratio (Daily & Annualized).
     * CAPM metrics: **Alpha** and **Beta** relative to the S&P 500.
-* **Probabilistic Forecasting (Monte Carlo):** Integrates a **Monte Carlo Simulation** to project future portfolio returns, showing the median expected path and the **95% confidence interval** (using a Geometric Brownian Motion model based on historical parameters).
+* **Probabilistic Forecasting (Monte Carlo):** Integrates a **Monte Carlo Simulation** to project future pure portfolio returns, showing the median expected path and the **95% confidence interval** (using a Geometric Brownian Motion model based on historical parameters).
 
 ---
 
@@ -61,7 +61,7 @@ You must have **R** and **RStudio** installed on your system.
 
 You can interact with a deployed version of the application here:
 
-[**https://davidegrieco.shinyapps.io/FinancialPortfolioVSBenchmarkSimulator/**]
+[**https://davidegrieco.shinyapps.io/R-Shiny-Portfolio-MC-Simulator/**]
 
 ---
 
