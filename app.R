@@ -3,18 +3,20 @@ library(shiny)
 library(quantmod)
 library(PerformanceAnalytics)
 library(tidyverse)
-library(xts) # Needed for xts object manipulation
+library(xts)
 
 # --- Helper Function for Data Retrieval ---
 get_returns <- function(ticker, from = "2022-01-01", to = Sys.Date()) {
   tryCatch({
     # Get data from Yahoo Finance
     data <- getSymbols(ticker, src = "yahoo", from = from, to = to, auto.assign = FALSE)
+    
     # Calculate daily returns from closing prices
     daily_returns <- dailyReturn(Cl(data))
     colnames(daily_returns) <- ticker
     return(daily_returns)
   }, error = function(e) {
+    
     # Return NULL on error (e.g., invalid ticker)
     return(NULL)
   })
@@ -142,7 +144,6 @@ server <- function(input, output, session) {
     mc_results_absolute <- mc_results_list$simulated_values
     mc_initial_value <- mc_results_list$initial_value # The relative value at the start of the forecast
     
-    # FIX: Normalize the simulation paths for plotting. They will now start at 1.0.
     mc_results_normalized <- mc_results_absolute / mc_initial_value
     
     # 3. Calculate Simulated Terminal Value (Uses absolute values for correct return calculation)
@@ -158,7 +159,7 @@ server <- function(input, output, session) {
       portfolio = portfolio_returns, 
       benchmark = benchmark_ret, 
       mc_results = mc_results_normalized, # <- Use normalized results for the plot
-      mc_total_return = mc_pure_forecast_return # Store the PURE forecast return
+      mc_total_return = mc_pure_forecast_return 
     ))
   })
   
@@ -203,12 +204,10 @@ server <- function(input, output, session) {
       geom_line(aes(y = Median), color = "black", linewidth = 1) +
       labs(
         title = paste("Monte Carlo Forecast: Portfolio Value after", n_days, "Days"),
-        # Updated Y-axis label to reflect normalization/relative forecast value
         y = "Portfolio Value (Relative to Forecast Start)", 
         x = "Trading Day Forecast"
       ) +
       theme_minimal() +
-      # Use percent format, 1.0 = 100%
       scale_y_continuous(labels = scales::percent_format(accuracy = 1))
   })
   
@@ -217,15 +216,17 @@ server <- function(input, output, session) {
     req(portfolio_data())
     port <- portfolio_data()$portfolio
     bench <- portfolio_data()$benchmark
-    mc_pure_forecast_return <- portfolio_data()$mc_total_return # This is the PURE forecast return
+    mc_pure_forecast_return <- portfolio_data()$mc_total_return 
     
     n_days <- nrow(port)
     
     # Portfolio Metrics
     port_mean <- mean(port)
     port_sd <- sd(port)
+    
     # Total return: (Product of (1+daily return) - 1) * 100
     port_total <- (prod(1 + port) - 1) * 100
+    
     # Total Volatility (Annualized Historical Volatility): SD * sqrt(N_Days_in_a_Year) * 100
     port_total_vol <- port_sd * sqrt(252) * 100 
     port_sharpe_daily <- SharpeRatio(port, Rf = 0)[1]
@@ -243,7 +244,7 @@ server <- function(input, output, session) {
     alpha <- CAPM.alpha(port, bench, Rf = 0)
     beta <- CAPM.beta(port, bench, Rf = 0)
     
-    # Create the data frame for the table, now including the corrected Monte Carlo forecast return
+    # Create the data frame for the table
     stats <- data.frame(
       `Indicator` = c(
         "Mean Daily Return (%)",
@@ -274,7 +275,7 @@ server <- function(input, output, session) {
       ),
       `MonteCarlo MedianForecast (N Days)` = c(
         "-",
-        round(mc_pure_forecast_return, 2), # Displaying the PURE forecast return
+        round(mc_pure_forecast_return, 2),
         "-",
         "-",
         "-",
